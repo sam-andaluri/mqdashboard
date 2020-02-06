@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Severless MQ Dashboard generator
+Resources:
+  MainDashboard:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      CodeUri: ./main_dashboard
+      Description: 'Main AmazonMQ Dashboard that lists all brokers in a region'
+      MemorySize: 128
+      Timeout: 60
+      Events:
+        UpdateInterval:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+  BrokerDashboard:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      CodeUri: ./broker_dashboard
+      Description: 'Dashboard for a given broker and its associated queues and topics'
+      MemorySize: 128
+      Timeout: 60
+      Events:
+        UpdateInterval:
+          Type: Schedule
+          Properties:
+            Schedule: rate(12 hour)
+  ObjectDashboard:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      CodeUri: ./object_dashboard
+      Description: 'Dashboard for a given queue or topic'
+      MemorySize: 128
+      Timeout: 60
+      Events:
+        UpdateInterval:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
