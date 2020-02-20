@@ -15,10 +15,10 @@ Resources:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
       Events:
-        EveryMinute:
+        MainInterval:
           Type: Schedule
           Properties:
-            Schedule: 'rate(1 minute)'
+            Schedule: 'rate(12 hours)'
   BrokerDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -32,7 +32,7 @@ Resources:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
       Events:
-        Every12Hours:
+        BrokerInterval:
           Type: Schedule
           Properties:
             Schedule: 'rate(12 hours)'
@@ -49,7 +49,7 @@ Resources:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
       Events:
-        EveryHour:
+        ObjectInterval:
           Type: Schedule
           Properties:
-            Schedule: 'rate(1 hour)'
+            Schedule: 'rate(12 hours)'
