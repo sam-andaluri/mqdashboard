@@ -11,11 +11,14 @@ Resources:
       Description: 'Main AmazonMQ Dashboard that lists all brokers in a region'
       MemorySize: 128
       Timeout: 60
+      Policies:
+        - AmazonMQReadOnlyAccess
+        - CloudWatchFullAccess
       Events:
-        UpdateInterval:
+        EveryMinute:
           Type: Schedule
           Properties:
-            Schedule: rate(1 minute)
+            Schedule: 'rate(1 minute)'
   BrokerDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -25,11 +28,14 @@ Resources:
       Description: 'Dashboard for a given broker and its associated queues and topics'
       MemorySize: 128
       Timeout: 60
+      Policies:
+        - AmazonMQReadOnlyAccess
+        - CloudWatchFullAccess
       Events:
-        UpdateInterval:
+        Every12Hours:
           Type: Schedule
           Properties:
-            Schedule: rate(12 hour)
+            Schedule: 'rate(12 hours)'
   ObjectDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -39,8 +45,11 @@ Resources:
       Description: 'Dashboard for a given queue or topic'
       MemorySize: 128
       Timeout: 60
+      Policies:
+        - AmazonMQReadOnlyAccess
+        - CloudWatchFullAccess
       Events:
-        UpdateInterval:
+        EveryHour:
           Type: Schedule
           Properties:
-            Schedule: rate(1 hour)
+            Schedule: 'rate(1 hour)'
