@@ -1,23 +1,19 @@
 import copy
 import json
-
 import boto3
 
 # AWS API clients
 mq = boto3.client('mq')
 cw = boto3.client('cloudwatch')
 
-
 # Dashboard names can only have a dash or underscore.
-def getQueueDashboardName(queueName):
-    return queueName.replace(".", "-")
-
+def getObjectDashboardName(objectName):
+    return objectName.replace(".", "-")
 
 # Generate a CW dashboard URL markdown for a given queue
-def generateQueueURLMd(queueName, brokerRegion):
-    return """[""" + queueName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getQueueDashboardName(
-        queueName) + """)\n\n"""
-
+def generateObjectURLMd(objectName, displayName, brokerRegion):
+    return """[""" + displayName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getObjectDashboardName(
+        objectName) + """)\n\n"""
 
 # Given a broker, enumerate queues and topics for that broker
 def getListOfQueuesAndTopics(brokerName, queueList, topicList):
@@ -30,7 +26,6 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
             if dimensions['Name'] == 'Topic':
                 topicList.add(dimensions['Value'])
 
-
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateObjectDashboard(brokerName, brokerRegion):
     # Init queueList set.
@@ -41,8 +36,8 @@ def generateObjectDashboard(brokerName, brokerRegion):
     # Use the CW client to get the queue and topic list.
     getListOfQueuesAndTopics(brokerName, queueList, topicList)
 
-    # Read the queue dashboard template to generate a new dashboard for each queue or topic
-    queueTemplateJson = json.loads(dashboard_template, strict=False)
+    # Read the queue dashboard template to generate a new dashboard for each queue
+    queueTemplateJson = json.loads(queue_dashboard_template, strict=False)
     for queueName in queueList:
         queueJson = copy.copy(queueTemplateJson)
         queueJson['widgets'][0]['properties']['markdown'] = """\n ## Queue metrics for **""" + queueName + """**\n"""
@@ -51,11 +46,23 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][3] = brokerName
                 widget['properties']['metrics'][0][5] = queueName
                 widget['properties']['region'] = brokerRegion
-        cw.put_dashboard(DashboardName=getQueueDashboardName(queueName), DashboardBody=json.dumps(queueJson))
+        cw.put_dashboard(DashboardName=getObjectDashboardName(queueName), DashboardBody=json.dumps(queueJson))
 
+    # Read the topic dashboard template to generate a new dashboard for each topic
+    topicTemplateJson = json.loads(topic_dashboard_template, strict=False)
+    for topicName in topicList:
+        topicJson = copy.copy(topicTemplateJson)
+        topicJson['widgets'][0]['properties']['markdown'] = """\n ## Topic metrics for **""" + topicName + """**\n"""
+        for widget in topicJson['widgets']:
+            if widget['type'] == 'metric':
+                widget['properties']['metrics'][0][3] = brokerName
+                widget['properties']['metrics'][0][5] = topicName
+                widget['properties']['region'] = brokerRegion
+        cw.put_dashboard(DashboardName=getObjectDashboardName(topicName), DashboardBody=json.dumps(topicJson))
 
 def lambda_handler(event, context):
-    global dashboard_template
+    global queue_dashboard_template
+    global topic_dashboard_template
 
     version = '0.1'
     """
@@ -63,7 +70,7 @@ def lambda_handler(event, context):
     Version 0.1: Initial Release                    
     """
 
-    dashboard_template = """
+    queue_dashboard_template = """
     {
       "widgets": [
         {
@@ -113,6 +120,83 @@ def lambda_handler(event, context):
           }
         }
       ]
+    }
+    """
+
+    topic_dashboard_template = """
+    {
+        "widgets": [
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 0,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "metrics": [
+                        [ "AWS/AmazonMQ", "ProducerCount", "Broker", "iad-broker-1", "Topic", "TEST.TOPIC" ],
+                        [ ".", "ConsumerCount", ".", ".", ".", "." ]
+
+                    ],
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "region": "us-east-1",
+                    "stat": "Average",
+                    "period": 300,
+                    "title": ""
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 6,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "metrics": [
+                        [ "AWS/AmazonMQ", "EnqueueCount", "Broker", "iad-broker-1", "Topic", "TEST.TOPIC" ],
+                        [ ".", "DispatchCount", ".", ".", ".", "." ],
+                        [ ".", "InFlightCount", ".", ".", ".", "." ],
+                        [ ".", "DequeueCount", ".", ".", ".", "." ],
+                        [ ".", "ExpiredCount", ".", ".", ".", "." ]
+                    ],
+                    "region": "us-east-1",
+                    "period": 300
+                }
+            }
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 12,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "metrics": [
+                        [ "AWS/AmazonMQ", "MemoryUsage", "Broker", "iad-broker-1", "Topic", "TEST.TOPIC" ]
+                    ],
+                    "region": "us-east-1"
+                }
+            },
+            {
+                "type": "metric",
+                "x": 0,
+                "y": 18,
+                "width": 24,
+                "height": 6,
+                "properties": {
+                    "view": "timeSeries",
+                    "stacked": false,
+                    "metrics": [
+                        [ "AWS/AmazonMQ", "EnqueueTime", "Broker", "iad-broker-1", "Topic", "TEST.TOPIC" ]
+                    ],
+                    "region": "us-east-1"
+                }
+            }
+        ]
     }
     """
 

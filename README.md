@@ -13,7 +13,7 @@ for AmazonMQ. Amazon Lambda is used to generate the dashboards on a specified in
   
   - For each queue/topic, the dashboard generated shows the useful metrics.
   
-  - All dahsboards are generated every 12 hours, capturing any new brokers, queues or topics created in the past 12 hours.
+  - All dashboards are generated every 12 hours, capturing any new brokers, queues or topics created in the past 12 hours.
   
   - This repository includes all code necessary. Customers can tweak the code/intervals as necessary.
   
