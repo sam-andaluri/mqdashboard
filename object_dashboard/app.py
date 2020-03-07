@@ -165,7 +165,7 @@ def lambda_handler(event, context):
                     "region": "us-east-1",
                     "period": 300
                 }
-            }
+            },
             {
                 "type": "metric",
                 "x": 0,

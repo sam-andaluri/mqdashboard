@@ -1,6 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Severless MQ Dashboard generator
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: mq-dashboards
+    Description: AmazonMQ Dashboards
+    Author: Sam Andaluri
+    SpdxLicenseId: Apache-2.0
+    LicenseUrl: LICENSE.txt
+    ReadmeUrl: README.md
+    Labels: ['amazon-mq']
+    HomePageUrl: https://github.com/sam-andaluri/mqdashboard
+    SemanticVersion: 0.2.0
+    SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 Resources:
   MainDashboard:
     Type: 'AWS::Serverless::Function'

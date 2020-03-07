@@ -75,7 +75,6 @@ def generateBrokerDashboard(brokerName, brokerRegion):
     queueSummaryWidget["widgets"] = queueSummary
     topicSummaryWidget['widgets'] = topicSummary
 
-    print(brokerName)
     if len(queueSummary) > 0:
         cw.put_dashboard(DashboardName=brokerName + '-QueueSummary', DashboardBody=json.dumps(queueSummaryWidget))
     if len(topicSummary) > 0:
