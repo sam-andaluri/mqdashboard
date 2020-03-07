@@ -1,9 +1,10 @@
 import json
 import boto3
+import os
 
 # AWS API clients
-mq = boto3.client('mq')
-cw = boto3.client('cloudwatch')
+mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
+cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
 
 # Dashboard names can only have a dash or underscore.
 def getObjectDashboardName(objectName):
@@ -98,11 +99,12 @@ def lambda_handler(event, context):
     global queues_summary_template
     global topics_summary_template
 
-    version = '0.2'
+    version = '0.3'
     """
     Notes:
     Version 0.1: Initial Release. No support for topics yet.  
-    Version 0.2: Added support for topics. Added queue and topics summary dashboards.                  
+    Version 0.2: Added support for topics. Added queue and topics summary dashboards. 
+    Version 0.3: Paramterize the dashboard                 
     """
 
     queues_summary_template = """

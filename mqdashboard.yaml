@@ -1,6 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Severless MQ Dashboard generator
+
 Metadata:
   AWS::ServerlessRepo::Application:
     Name: mq-dashboards
@@ -11,8 +12,27 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['amazon-mq']
     HomePageUrl: https://github.com/sam-andaluri/mqdashboard
-    SemanticVersion: 0.2.1
+    SemanticVersion: 0.3.0
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
+
+Parameters:
+  BrokerRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: (Required) AWS Region.
+  MainDBInterval:
+    Type: String
+    Default: "rate(12 hours)"
+    Description: (Required) CW Event schedule interval for main dashboard that enumerates brokers. Default every 12 hours.
+  BrokerDBInterval:
+    Type: String
+    Default: "rate(12 hours)"
+    Description: (Required) CW Event schedule interval for broker dashboard that enumerates queues and topics. Default every 12 hours.
+  ObjectDbInterval:
+    Type: String
+    Default: "rate(12 hours)"
+    Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 12 hours.
+
 Resources:
   MainDashboard:
     Type: 'AWS::Serverless::Function'
@@ -26,11 +46,15 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+      Environment:
+        Variables:
+          MQ_REGION: !Ref BrokerRegion
       Events:
         MainInterval:
           Type: Schedule
           Properties:
-            Schedule: 'rate(12 hours)'
+            Schedule: !Ref MainDBInterval
+
   BrokerDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -43,11 +67,15 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+      Environment:
+        Variables:
+          MQ_REGION: !Ref BrokerRegion
       Events:
         BrokerInterval:
           Type: Schedule
           Properties:
-            Schedule: 'rate(12 hours)'
+            Schedule: !Ref BrokerDBInterval
+
   ObjectDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -60,8 +88,12 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+      Environment:
+        Variables:
+          MQ_REGION: !Ref BrokerRegion
       Events:
         ObjectInterval:
           Type: Schedule
           Properties:
-            Schedule: 'rate(12 hours)'
+            Schedule: !Ref ObjectDbInterval
+
