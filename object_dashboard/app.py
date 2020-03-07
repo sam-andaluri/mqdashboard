@@ -64,10 +64,11 @@ def lambda_handler(event, context):
     global queue_dashboard_template
     global topic_dashboard_template
 
-    version = '0.1'
+    version = '0.2'
     """
     Notes:
-    Version 0.1: Initial Release                    
+    Version 0.1: Initial Release.
+    Version 0.2: Add support for topics.                    
     """
 
     queue_dashboard_template = """
