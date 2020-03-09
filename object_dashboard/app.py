@@ -25,7 +25,12 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
             if dimensions['Name'] == 'Queue':
                 queueList.add(dimensions['Value'])
             if dimensions['Name'] == 'Topic':
-                topicList.add(dimensions['Value'])
+                topicName = dimensions['Value']
+                if os.environ['INCLUDE_ADVISORY'] == 'YES':
+                    topicList.add(topicName)
+                else:
+                    if topicName.startswith('Advisory') != True:
+                        topicList.add(topicName)
 
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateObjectDashboard(brokerName, brokerRegion):

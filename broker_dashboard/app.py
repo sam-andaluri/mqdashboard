@@ -24,7 +24,12 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
             if dimensions['Name'] == 'Queue':
                 queueList.add(dimensions['Value'])
             if dimensions['Name'] == 'Topic':
-                topicList.add(dimensions['Value'])
+                topicName = dimensions['Value']
+                if os.environ['INCLUDE_ADVISORY'] == 'YES':
+                    topicList.add(topicName)
+                else:
+                    if topicName.startswith('Advisory') != True:
+                        topicList.add(topicName)
 
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateBrokerDashboard(brokerName, brokerRegion):
@@ -35,7 +40,6 @@ def generateBrokerDashboard(brokerName, brokerRegion):
     topicSummary = list()
     queueSummaryWidget = dict()
     topicSummaryWidget = dict()
-
 
     # MQ client does not have API for listing queues and topics.
     # Use the CW client to get the queue and topic list.

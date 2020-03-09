@@ -16,6 +16,10 @@ Metadata:
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 
 Parameters:
+  CustomerName:
+    Type: String
+    Default: "Customer"
+    Description: (Required) Customer name.
   BrokerRegion:
     Type: String
     Default: "us-east-1"
@@ -32,6 +36,13 @@ Parameters:
     Type: String
     Default: "rate(12 hours)"
     Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 12 hours.
+  IncludeAdvisoryTopics:
+    Type: String
+    Default: NO
+    AllowedValues:
+      - YES
+      - NO
+    Description: Include advisory topics.
 
 Resources:
   MainDashboard:
@@ -49,6 +60,7 @@ Resources:
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
+          CUSTOMER_NAME: !Ref CustomerName
       Events:
         MainInterval:
           Type: Schedule
@@ -70,6 +82,7 @@ Resources:
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
+          INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
       Events:
         BrokerInterval:
           Type: Schedule
@@ -91,6 +104,7 @@ Resources:
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
+          INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
       Events:
         ObjectInterval:
           Type: Schedule

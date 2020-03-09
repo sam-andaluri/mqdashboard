@@ -6,7 +6,6 @@ import os
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
 
-
 # Generates a CW dashboard URL markdown for a given broker.
 def generateBrokerURLMd(brokerName, brokerRegion, isSingle):
     retval = ""
@@ -20,11 +19,12 @@ def generateBrokerURLMd(brokerName, brokerRegion, isSingle):
 def lambda_handler(event, context):
     global dashboard_template
 
-    version = '0.2'
+    version = '0.3'
     """
     Notes:
-    Version 0.1: Initial Release
-    Version 0.2: Add support for region                    
+    Version 0.1: Initial Release.
+    Version 0.2: Add support for region. 
+    Version 0.3: Add support for customer name customization.                   
     """
 
     dashboard_template = """{
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
           "width": 21,
           "height": 3,
           "properties": {
-            "markdown": "\n# Customer MQ Operations\n## Playbook\nThis is a sample dashboard that customers can customize to suit their needs. This dashboard demonstrates how different metrics can be charted to provide meaningful insights for monitoring AmazonMQ instances.\n\n"
+            "markdown": "\n# %s MQ Operations\n## Playbook\nThis is a sample dashboard that customers can customize to suit their needs. This dashboard demonstrates how different metrics can be charted to provide meaningful insights for monitoring AmazonMQ instances.\n\n"
           }
         },
         {
@@ -63,6 +63,7 @@ def lambda_handler(event, context):
             brokerUrlsMd += generateBrokerURLMd(brokerName, brokerRegion, True)
         else:
             brokerUrlsMd += generateBrokerURLMd(brokerName, brokerRegion, False)
+    dashboard_template = dashboard_template % os.environ['CUSTOMER_NAME']
     mqJson = json.loads(dashboard_template, strict=False)
     mqJson['widgets'][1]['properties']['markdown'] = brokerUrlsMd
-    cw.put_dashboard(DashboardName="AmazonMQ", DashboardBody=json.dumps(mqJson))
+    cw.put_dashboard(DashboardName="AmazonMQ-" + os.environ['MQ_REGION'], DashboardBody=json.dumps(mqJson))
