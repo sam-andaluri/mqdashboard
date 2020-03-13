@@ -12,7 +12,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['amazon-mq']
     HomePageUrl: https://github.com/sam-andaluri/mqdashboard
-    SemanticVersion: 0.3.0
+    SemanticVersion: 0.4.1
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 
 Parameters:
@@ -38,13 +38,36 @@ Parameters:
     Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 12 hours.
   IncludeAdvisoryTopics:
     Type: String
-    Default: NO
+    Default: "NO"
+    Description: Include advisory topics. Default NO.
     AllowedValues:
-      - YES
-      - NO
-    Description: Include advisory topics.
+      - "YES"
+      - "NO"
+  ProvisionAlarms:
+    Type: String
+    Default: "YES"
+    AllowedValues:
+      - "YES"
+      - "NO"
+    Description: Add alarms for brokers, queues and topics. Default YES.
+  AlarmTopic:
+    Type: String
+    Default: "amazonmq-operations"
+    Description: SNS Topic for alarm notifications.
+  AlarmEmail:
+    Type: String
+    Default: "ops@email.com"
+    Description: Email where the alarms are sent.
 
 Resources:
+  SnsTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: !Ref AlarmTopic
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlarmEmail
+
   MainDashboard:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -83,6 +106,9 @@ Resources:
         Variables:
           MQ_REGION: !Ref BrokerRegion
           INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
+          PROVISION_ALARMS: !Ref ProvisionAlarms
+          SNS_TOPIC_ARN: !Sub arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${AlarmTopic}
+
       Events:
         BrokerInterval:
           Type: Schedule
@@ -105,9 +131,9 @@ Resources:
         Variables:
           MQ_REGION: !Ref BrokerRegion
           INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
+          SNS_TOPIC_ARN: !Sub arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${AlarmTopic}
       Events:
         ObjectInterval:
           Type: Schedule
           Properties:
             Schedule: !Ref ObjectDbInterval
-

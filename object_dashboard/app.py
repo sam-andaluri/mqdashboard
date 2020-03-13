@@ -6,6 +6,7 @@ import os
 # AWS API clients
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
+topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Dashboard names can only have a dash or underscore.
 def getObjectDashboardName(objectName):
@@ -32,6 +33,68 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
                     if topicName.startswith('Advisory') != True:
                         topicList.add(topicName)
 
+def put_topic_alarm(brokerName, topicName):
+    cw.put_metric_alarm(
+        AlarmName='NoConsumer-'+ topicName,
+        ComparisonOperator='LessThanOrEqualToThreshold',
+        EvaluationPeriods=1,
+        MetricName='ConsumerCount',
+        Namespace='AWS/AmazonMQ',
+        Period=60,
+        Statistic='SampleCount',
+        Threshold=0,
+        ActionsEnabled=True,
+        OKActions=[
+            topicArn,
+        ],
+        AlarmActions=[
+            topicArn,
+        ],
+        AlarmDescription='No consumers for ' + topicName,
+        Dimensions=[
+            {
+                'Name': 'Broker',
+                'Value': brokerName
+            },
+            {
+                'Name': 'Topic',
+                'Value': topicName
+            },
+        ],
+        Unit='Count'
+    )
+
+def put_queue_alarm(brokerName, queueName):
+    cw.put_metric_alarm(
+        AlarmName='NoConsumer-'+ queueName,
+        ComparisonOperator='LessThanOrEqualToThreshold',
+        EvaluationPeriods=1,
+        MetricName='ConsumerCount',
+        Namespace='AWS/AmazonMQ',
+        Period=60,
+        Statistic='SampleCount',
+        Threshold=0,
+        ActionsEnabled=True,
+        OKActions=[
+            topicArn,
+        ],
+        AlarmActions=[
+            topicArn,
+        ],
+        AlarmDescription='No consumers for ' + queueName,
+        Dimensions=[
+            {
+                'Name': 'Broker',
+                'Value': brokerName
+            },
+            {
+                'Name': 'Queue',
+                'Value': queueName
+            },
+        ],
+        Unit='Count'
+    )
+
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateObjectDashboard(brokerName, brokerRegion):
     # Init queueList set.
@@ -52,6 +115,7 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][3] = brokerName
                 widget['properties']['metrics'][0][5] = queueName
                 widget['properties']['region'] = brokerRegion
+        put_queue_alarm(brokerName, queueName)
         cw.put_dashboard(DashboardName=getObjectDashboardName(queueName), DashboardBody=json.dumps(queueJson))
 
     # Read the topic dashboard template to generate a new dashboard for each topic
@@ -64,18 +128,20 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][3] = brokerName
                 widget['properties']['metrics'][0][5] = topicName
                 widget['properties']['region'] = brokerRegion
+        put_topic_alarm(brokerName, topicName)
         cw.put_dashboard(DashboardName=getObjectDashboardName(topicName), DashboardBody=json.dumps(topicJson))
 
 def lambda_handler(event, context):
     global queue_dashboard_template
     global topic_dashboard_template
 
-    version = '0.3'
+    version = '0.4'
     """
     Notes:
     Version 0.1: Initial Release.
     Version 0.2: Add support for topics. 
-    Version 0.3: Parameterize the dashboard.                   
+    Version 0.3: Parameterize the dashboard.
+    Version 0.4: Add queue and topic alarm.                   
     """
 
     queue_dashboard_template = """
@@ -105,7 +171,7 @@ def lambda_handler(event, context):
             "view": "timeSeries",
             "stacked": false,
             "region": "us-east-1",
-            "period": 300,
+            "period": 60,
             "stat": "Average"
           }
         },
@@ -124,7 +190,7 @@ def lambda_handler(event, context):
             "stacked": false,
             "region": "us-east-1",
             "stat": "Average",
-            "period": 300
+            "period": 60
           }
         }
       ]
@@ -150,7 +216,7 @@ def lambda_handler(event, context):
                     "stacked": false,
                     "region": "us-east-1",
                     "stat": "Average",
-                    "period": 300,
+                    "period": 60,
                     "title": ""
                 }
             },
@@ -171,7 +237,7 @@ def lambda_handler(event, context):
                         [ ".", "ExpiredCount", ".", ".", ".", "." ]
                     ],
                     "region": "us-east-1",
-                    "period": 300
+                    "period": 60
                 }
             },
             {

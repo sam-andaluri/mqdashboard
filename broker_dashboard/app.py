@@ -5,6 +5,7 @@ import os
 # AWS API clients
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
+topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Dashboard names can only have a dash or underscore.
 def getObjectDashboardName(objectName):
@@ -98,17 +99,95 @@ def generateBrokerDashboard(brokerName, brokerRegion):
             widget['properties']['region'] = brokerRegion
     cw.put_dashboard(DashboardName=brokerName, DashboardBody=json.dumps(brokerJson))
 
+def put_broker_alarms(brokerName):
+    cw.put_metric_alarm(
+        AlarmName='BrokerHeapUsage-'+ brokerName,
+        ComparisonOperator='GreaterThanThreshold',
+        EvaluationPeriods=5,
+        MetricName='HeapUsage',
+        Namespace='AWS/AmazonMQ',
+        Period=60,
+        Statistic='Average',
+        Threshold=70.0,
+        ActionsEnabled=True,
+        OKActions=[
+            topicArn,
+        ],
+        AlarmActions=[
+            topicArn,
+        ],
+        AlarmDescription='Heap usage exceeded 80% for broker ' + brokerName,
+        Dimensions=[
+            {
+                'Name': 'Broker',
+                'Value': brokerName
+            }
+        ],
+        Unit='Percent'
+    )
+    cw.put_metric_alarm(
+        AlarmName='BrokerStoreUsage-'+ brokerName,
+        ComparisonOperator='GreaterThanThreshold',
+        EvaluationPeriods=5,
+        MetricName='StorePercentUsage',
+        Namespace='AWS/AmazonMQ',
+        Period=60,
+        Statistic='Average',
+        Threshold=70.0,
+        ActionsEnabled=True,
+        OKActions=[
+            topicArn,
+        ],
+        AlarmActions=[
+            topicArn,
+        ],
+        AlarmDescription='Storage usage exceeded 80% for broker ' + brokerName,
+        Dimensions=[
+            {
+                'Name': 'Broker',
+                'Value': brokerName
+            },
+        ],
+        Unit='Percent'
+    )
+    cw.put_metric_alarm(
+        AlarmName='BrokerCPUUtilization-'+ brokerName,
+        ComparisonOperator='GreaterThanThreshold',
+        EvaluationPeriods=5,
+        MetricName='CpuUtilization',
+        Namespace='AWS/AmazonMQ',
+        Period=60,
+        Statistic='Average',
+        Threshold=70.0,
+        ActionsEnabled=True,
+        OKActions=[
+            topicArn,
+        ],
+        AlarmActions=[
+            topicArn,
+        ],
+        AlarmDescription='Heap usage exceeded 80% for broker ' + brokerName,
+        Dimensions=[
+            {
+                'Name': 'Broker',
+                'Value': brokerName
+            },
+        ],
+        Unit='Percent'
+    )
+
 def lambda_handler(event, context):
     global broker_dashboard_template
     global queues_summary_template
     global topics_summary_template
 
-    version = '0.3'
+    version = '0.4'
     """
     Notes:
     Version 0.1: Initial Release. No support for topics yet.  
     Version 0.2: Added support for topics. Added queue and topics summary dashboards. 
-    Version 0.3: Paramterize the dashboard                 
+    Version 0.3: Paramterize the dashboard.
+    Version 0.4: Add broker alarms.                 
     """
 
     queues_summary_template = """
@@ -126,7 +205,7 @@ def lambda_handler(event, context):
                 [ ".", "ConsumerCount", ".", ".", ".", "." ]
             ],
             "region": "us-east-1",
-            "period": 300,
+            "period": 60,
             "title": "TEST.QUEUE"
         }
     }
@@ -148,7 +227,7 @@ def lambda_handler(event, context):
                 [ ".", "ConsumerCount", ".", ".", ".", "." ]
             ],
             "region": "us-east-1",
-            "period": 300,
+            "period": 60,
             "title": "TEST.TOPIC"
         }
     }
@@ -198,7 +277,7 @@ def lambda_handler(event, context):
             "view": "timeSeries",
             "stacked": false,
             "region": "us-east-1",
-            "period": 300,
+            "period": 60,
             "stat": "Average"
           }
         },
@@ -216,7 +295,7 @@ def lambda_handler(event, context):
             "view": "timeSeries",
             "stacked": false,
             "region": "us-east-1",
-            "period": 300,
+            "period": 60,
             "stat": "Average"
           }
         }
@@ -229,6 +308,8 @@ def lambda_handler(event, context):
         brokerName = broker['BrokerName']
         brokerRegion = broker['BrokerArn'].split(":")[3]
         deploymentMode = broker['DeploymentMode']
+        if os.environ['PROVISION_ALARMS'] == "YES":
+            put_broker_alarms(brokerName)
         if deploymentMode == 'SINGLE_INSTANCE':
             generateBrokerDashboard(brokerName, brokerRegion)
         else:

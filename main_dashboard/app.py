@@ -67,3 +67,4 @@ def lambda_handler(event, context):
     mqJson = json.loads(dashboard_template, strict=False)
     mqJson['widgets'][1]['properties']['markdown'] = brokerUrlsMd
     cw.put_dashboard(DashboardName="AmazonMQ-" + os.environ['MQ_REGION'], DashboardBody=json.dumps(mqJson))
+
