@@ -12,7 +12,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['amazon-mq']
     HomePageUrl: https://github.com/sam-andaluri/mqdashboard
-    SemanticVersion: 0.4.1
+    SemanticVersion: 0.4.2
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 
 Parameters:
@@ -26,15 +26,15 @@ Parameters:
     Description: (Required) AWS Region.
   MainDBInterval:
     Type: String
-    Default: "rate(12 hours)"
+    Default: "rate(30 minutes)"
     Description: (Required) CW Event schedule interval for main dashboard that enumerates brokers. Default every 12 hours.
   BrokerDBInterval:
     Type: String
-    Default: "rate(12 hours)"
+    Default: "rate(30 minutes)"
     Description: (Required) CW Event schedule interval for broker dashboard that enumerates queues and topics. Default every 12 hours.
   ObjectDbInterval:
     Type: String
-    Default: "rate(12 hours)"
+    Default: "rate(30 minutes)"
     Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 12 hours.
   IncludeAdvisoryTopics:
     Type: String
