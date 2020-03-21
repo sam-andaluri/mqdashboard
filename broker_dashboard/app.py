@@ -22,15 +22,17 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
     resp = cw.list_metrics(Namespace="AWS/AmazonMQ", Dimensions=[{'Name': 'Broker', 'Value': brokerName}])
     for metrics in resp['Metrics']:
         for dimensions in metrics['Dimensions']:
-            if dimensions['Name'] == 'Queue':
-                queueList.add(dimensions['Value'])
             if dimensions['Name'] == 'Topic':
                 topicName = dimensions['Value']
                 if os.environ['INCLUDE_ADVISORY'] == 'YES':
                     topicList.add(topicName)
                 else:
-                    if topicName.startswith('Advisory') != True:
+                    if 'Advisory' in topicName:
+                        continue
+                    else:
                         topicList.add(topicName)
+            elif dimensions['Name'] == 'Queue':
+                queueList.add(dimensions['Value'])
 
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateBrokerDashboard(brokerName, brokerRegion):

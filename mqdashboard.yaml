@@ -12,7 +12,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['amazon-mq']
     HomePageUrl: https://github.com/sam-andaluri/mqdashboard
-    SemanticVersion: 0.4.3
+    SemanticVersion: 0.4.8
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 
 Parameters:

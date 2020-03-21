@@ -18,20 +18,22 @@ def generateObjectURLMd(objectName, displayName, brokerRegion):
         objectName) + """)\n\n"""
 
 # Given a broker, enumerate queues and topics for that broker
-def getListOfQueuesAndTopics(brokerName, queueList, topicList):
+def getListOfQueuesAndTopics(brokerName, queueList, topicList, advList):
     # Get a list of metrics for AmazonMQ and a broker. This would help enumerate queues and topics
     resp = cw.list_metrics(Namespace="AWS/AmazonMQ", Dimensions=[{'Name': 'Broker', 'Value': brokerName}])
     for metrics in resp['Metrics']:
         for dimensions in metrics['Dimensions']:
-            if dimensions['Name'] == 'Queue':
-                queueList.add(dimensions['Value'])
             if dimensions['Name'] == 'Topic':
                 topicName = dimensions['Value']
                 if os.environ['INCLUDE_ADVISORY'] == 'YES':
                     topicList.add(topicName)
                 else:
-                    if 'Advisory' in topicName != True:
+                    if 'Advisory' in topicName:
+                        advList.add(getObjectDashboardName(topicName))
+                    else:
                         topicList.add(topicName)
+            elif dimensions['Name'] == 'Queue':
+                queueList.add(dimensions['Value'])
 
 def put_topic_alarm(brokerName, topicName):
     cw.put_metric_alarm(
@@ -100,10 +102,17 @@ def generateObjectDashboard(brokerName, brokerRegion):
     # Init queueList set.
     queueList = set()
     topicList = set()
+    advList = set()
 
     # MQ client does not have API for listing queues and topics.
     # Use the CW client to get the queue and topic list.
-    getListOfQueuesAndTopics(brokerName, queueList, topicList)
+    getListOfQueuesAndTopics(brokerName, queueList, topicList, advList)
+
+    #Cleanup advisory dashboards
+    if os.environ['INCLUDE_ADVISORY'] == 'NO':
+        advisoryList = list(advList)
+        if len(advisoryList) > 0:
+            cw.delete_dashboards(DashboardNames=advisoryList)
 
     # Read the queue dashboard template to generate a new dashboard for each queue
     queueTemplateJson = json.loads(queue_dashboard_template, strict=False)
