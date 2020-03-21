@@ -27,15 +27,15 @@ Parameters:
   MainDBInterval:
     Type: String
     Default: "rate(30 minutes)"
-    Description: (Required) CW Event schedule interval for main dashboard that enumerates brokers. Default every 12 hours.
+    Description: (Required) CW Event schedule interval for main dashboard that enumerates brokers. Default every 30 minutes.
   BrokerDBInterval:
     Type: String
     Default: "rate(30 minutes)"
-    Description: (Required) CW Event schedule interval for broker dashboard that enumerates queues and topics. Default every 12 hours.
+    Description: (Required) CW Event schedule interval for broker dashboard that enumerates queues and topics. Default every 30 minutes.
   ObjectDbInterval:
     Type: String
     Default: "rate(30 minutes)"
-    Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 12 hours.
+    Description: (Required) CW Event schedule interval for object dashboard that generates dashboard for queues and topics. Default every 30 minutes.
   IncludeAdvisoryTopics:
     Type: String
     Default: "NO"
