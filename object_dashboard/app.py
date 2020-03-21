@@ -30,7 +30,7 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList):
                 if os.environ['INCLUDE_ADVISORY'] == 'YES':
                     topicList.add(topicName)
                 else:
-                    if topicName.startswith('Advisory') != True:
+                    if topicName.startswith('ActiveMQ-Advisory') != True:
                         topicList.add(topicName)
 
 def put_topic_alarm(brokerName, topicName):
