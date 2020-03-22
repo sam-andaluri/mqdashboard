@@ -9,13 +9,8 @@ cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION']
 topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Dashboard names can only have a dash or underscore.
-def getObjectDashboardName(objectName):
-    return objectName.replace(".", "-")
-
-# Generate a CW dashboard URL markdown for a given queue
-def generateObjectURLMd(objectName, displayName, brokerRegion):
-    return """[""" + displayName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getObjectDashboardName(
-        objectName) + """)\n\n"""
+def getObjectDashboardName(objectName, brokerName):
+    return objectName.replace(".", "-") + "-" + brokerName
 
 # Given a broker, enumerate queues and topics for that broker
 def getListOfQueuesAndTopics(brokerName, queueList, topicList, advList):
@@ -29,7 +24,7 @@ def getListOfQueuesAndTopics(brokerName, queueList, topicList, advList):
                     topicList.add(topicName)
                 else:
                     if 'Advisory' in topicName:
-                        advList.add(getObjectDashboardName(topicName))
+                        advList.add(getObjectDashboardName(topicName, brokerName))
                     else:
                         topicList.add(topicName)
             elif dimensions['Name'] == 'Queue':
@@ -125,7 +120,7 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][5] = queueName
                 widget['properties']['region'] = brokerRegion
         put_queue_alarm(brokerName, queueName)
-        cw.put_dashboard(DashboardName=getObjectDashboardName(queueName), DashboardBody=json.dumps(queueJson))
+        cw.put_dashboard(DashboardName=getObjectDashboardName(queueName, brokerName), DashboardBody=json.dumps(queueJson))
 
     # Read the topic dashboard template to generate a new dashboard for each topic
     topicTemplateJson = json.loads(topic_dashboard_template, strict=False)
@@ -138,7 +133,7 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][5] = topicName
                 widget['properties']['region'] = brokerRegion
         put_topic_alarm(brokerName, topicName)
-        cw.put_dashboard(DashboardName=getObjectDashboardName(topicName), DashboardBody=json.dumps(topicJson))
+        cw.put_dashboard(DashboardName=getObjectDashboardName(topicName, brokerName), DashboardBody=json.dumps(topicJson))
 
 def lambda_handler(event, context):
     global queue_dashboard_template

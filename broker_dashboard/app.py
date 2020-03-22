@@ -12,9 +12,15 @@ def getObjectDashboardName(objectName):
     return objectName.replace(".", "-")
 
 # Generate a CW dashboard URL markdown for a given queue
-def generateObjectURLMd(objectName, displayName, brokerRegion):
-    return """[""" + displayName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getObjectDashboardName(
+def generateObjectURLMd(objectName, displayName, brokerName, brokerRegion):
+    returnVal = """"""
+    if brokerName is None:
+        returnVal = """[""" + displayName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getObjectDashboardName(
         objectName) + """)\n\n"""
+    else:
+        returnVal = """[""" + displayName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + getObjectDashboardName(
+        objectName) + """-""" + brokerName + """)\n\n"""
+    return returnVal
 
 # Given a broker, enumerate queues and topics for that broker
 def getListOfQueuesAndTopics(brokerName, queueList, topicList):
@@ -54,7 +60,7 @@ def generateBrokerDashboard(brokerName, brokerRegion):
     yPos = 0
     for queueName in queueList:
         # Add queue and topic dashboard URLs to markdown
-        objectListMd += generateObjectURLMd(queueName, queueName, brokerRegion)
+        objectListMd += generateObjectURLMd(queueName, queueName, brokerName, brokerRegion)
         summaryJson = json.loads(queues_summary_template, strict=False)
         yPos += 3
         summaryJson['y'] += yPos
@@ -70,7 +76,7 @@ def generateBrokerDashboard(brokerName, brokerRegion):
     yPos = 0
     for topicName in topicList:
         # Add queue and topic dashboard URLs to markdown
-        objectListMd += generateObjectURLMd(topicName, topicName, brokerRegion)
+        objectListMd += generateObjectURLMd(topicName, topicName, brokerName, brokerRegion)
         summaryJson = json.loads(topics_summary_template, strict=False)
         yPos += 3
         summaryJson['y'] += yPos
@@ -88,7 +94,7 @@ def generateBrokerDashboard(brokerName, brokerRegion):
     if len(topicSummary) > 0:
         cw.put_dashboard(DashboardName=brokerName + '-TopicSummary', DashboardBody=json.dumps(topicSummaryWidget))
 
-    finalMd = objectListMd % (brokerName, generateObjectURLMd(brokerName + '-QueueSummary', "Summary of Queues", brokerRegion), generateObjectURLMd(brokerName + '-TopicSummary', "Summary of Topics", brokerRegion))
+    finalMd = objectListMd % (brokerName, generateObjectURLMd(brokerName + '-QueueSummary', "Summary of Queues", None, brokerRegion), generateObjectURLMd(brokerName + '-TopicSummary', "Summary of Topics", None, brokerRegion))
 
     # Read the broker dashboard template to generate a new dashboard for each broker
     # A separate dahsboard is generated for each broker and link to this dashboard is added
