@@ -6,6 +6,8 @@ import os
 # AWS API clients
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
+ssm = boto3.client(service_name='ssm', region_name=os.environ['MQ_REGION'])
+
 topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Dashboard names can only have a dash or underscore.
@@ -34,16 +36,13 @@ def put_topic_alarm(brokerName, topicName):
     cw.put_metric_alarm(
         AlarmName='NoConsumer-'+ topicName,
         ComparisonOperator='LessThanOrEqualToThreshold',
-        EvaluationPeriods=1,
+        EvaluationPeriods=2,
         MetricName='ConsumerCount',
         Namespace='AWS/AmazonMQ',
         Period=60,
         Statistic='SampleCount',
         Threshold=0,
         ActionsEnabled=True,
-        OKActions=[
-            topicArn,
-        ],
         AlarmActions=[
             topicArn,
         ],
@@ -65,16 +64,13 @@ def put_queue_alarm(brokerName, queueName):
     cw.put_metric_alarm(
         AlarmName='NoConsumer-'+ queueName,
         ComparisonOperator='LessThanOrEqualToThreshold',
-        EvaluationPeriods=1,
+        EvaluationPeriods=2,
         MetricName='ConsumerCount',
         Namespace='AWS/AmazonMQ',
         Period=60,
         Statistic='SampleCount',
         Threshold=0,
         ActionsEnabled=True,
-        OKActions=[
-            topicArn,
-        ],
         AlarmActions=[
             topicArn,
         ],
@@ -92,6 +88,21 @@ def put_queue_alarm(brokerName, queueName):
         Unit='Count'
     )
 
+def delete_topic_alarm(brokerName, topicName):
+    cw.delete_alarms(
+        AlarmNames=[
+            'NoConsumer-'+ topicName,
+        ]
+    )
+
+
+def delete_queue_alarm(brokerName, queueName):
+    cw.delete_alarms(
+        AlarmNames=[
+            'NoConsumer-'+ queueName,
+        ]
+    )
+
 # Generates a CW dashboard for each broker including a list of queues and topics
 def generateObjectDashboard(brokerName, brokerRegion):
     # Init queueList set.
@@ -103,12 +114,6 @@ def generateObjectDashboard(brokerName, brokerRegion):
     # Use the CW client to get the queue and topic list.
     getListOfQueuesAndTopics(brokerName, queueList, topicList, advList)
 
-    #Cleanup advisory dashboards
-    if os.environ['INCLUDE_ADVISORY'] == 'NO':
-        advisoryList = list(advList)
-        if len(advisoryList) > 0:
-            cw.delete_dashboards(DashboardNames=advisoryList)
-
     # Read the queue dashboard template to generate a new dashboard for each queue
     queueTemplateJson = json.loads(queue_dashboard_template, strict=False)
     for queueName in queueList:
@@ -119,7 +124,10 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][3] = brokerName
                 widget['properties']['metrics'][0][5] = queueName
                 widget['properties']['region'] = brokerRegion
-        put_queue_alarm(brokerName, queueName)
+        if provisionAlarms:
+            put_queue_alarm(brokerName, queueName)
+        else:
+            delete_queue_alarm(brokerName, queueName)
         cw.put_dashboard(DashboardName=getObjectDashboardName(queueName, brokerName), DashboardBody=json.dumps(queueJson))
 
     # Read the topic dashboard template to generate a new dashboard for each topic
@@ -132,12 +140,16 @@ def generateObjectDashboard(brokerName, brokerRegion):
                 widget['properties']['metrics'][0][3] = brokerName
                 widget['properties']['metrics'][0][5] = topicName
                 widget['properties']['region'] = brokerRegion
-        put_topic_alarm(brokerName, topicName)
+        if provisionAlarms:
+            put_topic_alarm(brokerName, topicName)
+        else:
+            delete_topic_alarm(brokerName, topicName)
         cw.put_dashboard(DashboardName=getObjectDashboardName(topicName, brokerName), DashboardBody=json.dumps(topicJson))
 
 def lambda_handler(event, context):
     global queue_dashboard_template
     global topic_dashboard_template
+    global provisionAlarms
 
     version = '0.4'
     """
@@ -278,13 +290,25 @@ def lambda_handler(event, context):
     }
     """
 
+    try:
+        provisionAlarmsOverride = ssm.get_parameter(Name='MQAlarmToggle', WithDecryption=False)['Parameter']['Value']
+        if provisionAlarmsOverride == "YES":
+            provisionAlarms = True
+        else:
+            provisionAlarms = False
+    except:
+        if os.environ['PROVISION_ALARMS'] == "YES":
+            provisionAlarms = True
+        else:
+            provisionAlarms = False
+
     brokerList = mq.list_brokers()
     for broker in brokerList['BrokerSummaries']:
         brokerName = broker['BrokerName']
         brokerRegion = broker['BrokerArn'].split(":")[3]
         deploymentMode = broker['DeploymentMode']
         if deploymentMode == 'SINGLE_INSTANCE':
-            generateObjectDashboard(brokerName, brokerRegion)
+            generateObjectDashboard(brokerName + "-1", brokerRegion)
         else:
             generateObjectDashboard(brokerName + "-1", brokerRegion)
             generateObjectDashboard(brokerName + "-2", brokerRegion)

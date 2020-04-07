@@ -12,7 +12,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['amazon-mq']
     HomePageUrl: https://github.com/sam-andaluri/mqdashboard
-    SemanticVersion: 0.4.9
+    SemanticVersion: 0.6.0
     SourceCodeUrl: https://github.com/sam-andaluri/mqdashboard
 
 Parameters:
@@ -60,6 +60,22 @@ Parameters:
     Description: Email where the alarms are sent.
 
 Resources:
+  RuntimeEmail:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Description: 'MQ Dashboard alarm email address'
+      Name: 'MQAlarmEmail'
+      Type: 'String'
+      Value: !Ref AlarmEmail
+
+  RuntimeAlarmToggle:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Description: 'MQ Dashboard Alarm toggle'
+      Name: 'MQAlarmToggle'
+      Type: 'String'
+      Value: 'YES'
+
   SnsTopic:
     Type: 'AWS::SNS::Topic'
     Properties:
@@ -80,10 +96,14 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+        - AmazonSNSFullAccess
+        - AmazonSSMReadOnlyAccess
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
           CUSTOMER_NAME: !Ref CustomerName
+          EMAIL_ENDPOINT: !Ref AlarmEmail
+          SNS_TOPIC_ARN: !Sub arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${AlarmTopic}
       Events:
         MainInterval:
           Type: Schedule
@@ -102,13 +122,13 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+        - AmazonSSMReadOnlyAccess
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
           INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
           PROVISION_ALARMS: !Ref ProvisionAlarms
           SNS_TOPIC_ARN: !Sub arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${AlarmTopic}
-
       Events:
         BrokerInterval:
           Type: Schedule
@@ -127,10 +147,12 @@ Resources:
       Policies:
         - AmazonMQReadOnlyAccess
         - CloudWatchFullAccess
+        - AmazonSSMReadOnlyAccess
       Environment:
         Variables:
           MQ_REGION: !Ref BrokerRegion
           INCLUDE_ADVISORY: !Ref IncludeAdvisoryTopics
+          PROVISION_ALARMS: !Ref ProvisionAlarms
           SNS_TOPIC_ARN: !Sub arn:${AWS::Partition}:sns:${AWS::Region}:${AWS::AccountId}:${AlarmTopic}
       Events:
         ObjectInterval:

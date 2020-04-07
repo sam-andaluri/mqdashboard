@@ -5,6 +5,8 @@ import os
 # AWS API clients
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
+ssm = boto3.client(service_name='ssm', region_name=os.environ['MQ_REGION'])
+
 topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Dashboard names can only have a dash or underscore.
@@ -184,10 +186,20 @@ def put_broker_alarms(brokerName):
         Unit='Percent'
     )
 
+
+def delete_broker_alarms(brokerName):
+    cw.delete_alarms(
+        AlarmNames=[
+            'BrokerHeapUsage-'+ brokerName, 'BrokerStoreUsage-'+ brokerName, 'BrokerCPUUtilization-'+ brokerName
+        ]
+    )
+
+
 def lambda_handler(event, context):
     global broker_dashboard_template
     global queues_summary_template
     global topics_summary_template
+    global provisionAlarms
 
     version = '0.4'
     """
@@ -311,15 +323,30 @@ def lambda_handler(event, context):
     }
     """
 
+    try:
+        provisionAlarmsOverride = ssm.get_parameter(Name='MQAlarmToggle', WithDecryption=False)['Parameter']['Value']
+        if provisionAlarmsOverride == "YES":
+            provisionAlarms = True
+        else:
+            provisionAlarms = False
+    except:
+        if os.environ['PROVISION_ALARMS'] == "YES":
+            provisionAlarms = True
+        else:
+            provisionAlarms = False
+
     brokerList = mq.list_brokers()
     for broker in brokerList['BrokerSummaries']:
         brokerName = broker['BrokerName']
         brokerRegion = broker['BrokerArn'].split(":")[3]
         deploymentMode = broker['DeploymentMode']
-        if os.environ['PROVISION_ALARMS'] == "YES":
+        if provisionAlarms:
             put_broker_alarms(brokerName)
+        else:
+            delete_broker_alarms(brokerName)
+
         if deploymentMode == 'SINGLE_INSTANCE':
-            generateBrokerDashboard(brokerName, brokerRegion)
+            generateBrokerDashboard(brokerName + "-1", brokerRegion)
         else:
             generateBrokerDashboard(brokerName + "-1", brokerRegion)
             generateBrokerDashboard(brokerName + "-2", brokerRegion)

@@ -5,12 +5,15 @@ import os
 # AWS API clients
 mq = boto3.client(service_name='mq', region_name=os.environ['MQ_REGION'])
 cw = boto3.client(service_name='cloudwatch', region_name=os.environ['MQ_REGION'])
+sns = boto3.client(service_name='sns', region_name=os.environ['MQ_REGION'])
+ssm = boto3.client(service_name='ssm', region_name=os.environ['MQ_REGION'])
+topicArn = os.environ['SNS_TOPIC_ARN']
 
 # Generates a CW dashboard URL markdown for a given broker.
 def generateBrokerURLMd(brokerName, brokerRegion, isSingle):
     retval = ""
     if isSingle:
-        retval = """[""" + brokerName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + brokerName + """)\n\n"""
+        retval = """[""" + brokerName + """](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + brokerName + """-1)\n\n"""
     else:
         retval = brokerName + """ [Primary](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + brokerName + """-1) [Standby](https://console.aws.amazon.com/cloudwatch/home?region=""" + brokerRegion + """#dashboards:name=""" + brokerName + """-2)\n\n"""
     return retval
@@ -18,6 +21,7 @@ def generateBrokerURLMd(brokerName, brokerRegion, isSingle):
 
 def lambda_handler(event, context):
     global dashboard_template
+    global alarmEmailOverride
 
     version = '0.3'
     """
@@ -50,6 +54,21 @@ def lambda_handler(event, context):
           }
         }]
     }"""
+
+    alarmEmailOverride = os.environ['EMAIL_ENDPOINT']
+    currentSubscriptions = sns.list_subscriptions_by_topic(TopicArn=topicArn)['Subscriptions']
+    if len(currentSubscriptions) > 0:
+        try:
+            alarmEmailOverride = ssm.get_parameter(Name='MQAlarmEmail', WithDecryption=False)['Parameter']['Value']
+        except:
+            alarmEmailOverride = os.environ['EMAIL_ENDPOINT']
+        for subscription in currentSubscriptions:
+            if subscription['Endpoint']!=alarmEmailOverride and \
+               len(subscription['SubscriptionArn'].split(":")) > 1:
+                sns.unsubscribe(SubscriptionArn=subscription['SubscriptionArn'])
+                sns.subscribe(TopicArn=topicArn, Protocol='email', Endpoint=alarmEmailOverride)
+    else:
+        sns.subscribe(TopicArn=topicArn, Protocol='email', Endpoint=alarmEmailOverride)
 
     brokerUrlsMd = """## Brokers\n\n"""
     brokerList = mq.list_brokers()
